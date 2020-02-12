@@ -128,9 +128,57 @@ def put_read(read, fd):
 	return 0
 
 
-
-
 def get_T_tail(read):
+
+	result = Tail(0, 0)
+	critical_non_T_amount = math.ceil(len(read.seq) * CRITICAL_PROCENTAGE)
+	local_amount_T = 0
+	local_amount_non_T = 0
+	l = 0
+	read_quality = []
+	read_score = []
+
+	while l < len(read.seq) :
+
+		
+
+		if (read.seq[l] == "T"):
+			local_amount_T += 1
+		else:
+			local_amount_non_T += 1
+
+		if (local_amount_non_T > critical_non_T_amount):
+			l -= 1
+			break
+
+		#print read.seq[: i + 1], read.seq[i], local_amount_S, i
+
+		read_score.append(local_amount_non_T/(l+1))
+		read_quality.append(local_amount_T/(l+1))
+		l += 1
+
+	if l == len(read.seq):
+		l -= 1
+
+	while l > 0 and read_quality[l-1] > read_quality[l]:
+		l -= 1
+
+	result.score = read_score[l]
+	result.index = l
+	if (l < MIN_TAIL_LENGTH - 1):
+			result.index = 0
+	#print (result.score, result.index)
+	return result
+
+
+	
+
+
+
+
+
+
+def get_T_tail_old(read):
 
 	result = Tail(0, 0)
 	critical_S_amount = math.ceil(len(read.seq) * CRITICAL_PROCENTAGE)
@@ -139,7 +187,10 @@ def get_T_tail(read):
 	local_amount_S = 0.0
 	local_amount_T = 0.0
 	score_T_line = []
+
 	i = 0
+
+
 	while i < len(read.seq):
 
 		global_amount_W += 1
@@ -160,30 +211,28 @@ def get_T_tail(read):
 
 	if i == len(read.seq):
 		i -= 1 
+
 	while (i != 0):
 		if (read.seq[i] != "T"):
 
 			i = i - 1
 			score_T_line.pop()
-			#global_amount_W = global_amount_W - 1
-			local_amount_S = local_amount_S - 1
+			global_amount_W  -= 1
+			local_amount_S -= 1
 
 		else:
 			break
 
-	while (i != 0):
-		#print(CRITICAL_PROCENTAGE)
-		if (score_T_line[i] >= 1 - CRITICAL_PROCENTAGE):
-			break
-		else:
-			i = i - 1
+	while (i != 0 and score_T_line[i] <= 1 - CRITICAL_PROCENTAGE ):
+
+			i -= 1
 
 	result.score = score_T_line[i]
 	result.index = i
 	if (i < MIN_TAIL_LENGTH - 1):
 		result.score = 0
 		result.index = 0
-
+	#print (score_T_line, len(score_T_line))
 	return result
 
 
@@ -211,8 +260,9 @@ def reverse_compl(read):
 	result = Read("", "", "", "")
 	result.name = read.name
 	result.plus = read.plus
-
+	#print(len(read.qual))
 	for i in range(len(read.seq) - 1, 0, -1):
+		#print(i)
 		#print (f"unit_compl(read.seq[i]):{read.seq[i]}")
 		result.seq = result.seq + unit_compl(read.seq[i])
 		result.qual = result.qual + read.qual[i]
@@ -222,15 +272,9 @@ def reverse_compl(read):
 
 def get_best_read(read_1, read_2):
 
-	result = Read("", "", "", "")
 
-
-	if read_1.seq == '':
-		return read_2
-
-	elif read_2.seq == '':
-		return read_1
-
+	if read_1.seq == "" or read_2.seq == "":
+		return Read("", "", "", "")
 	else:
 		if (len(read_1.seq) <= len(read_2.seq)):
 			return read_1
@@ -264,13 +308,14 @@ def cut_tail(read):
 	result = Read("", "", "", "")
 
 	tail_T = get_T_tail(read)
-	if (tail_T.index >= MIN_TAIL_LENGTH - 1):
+	if (True):
 		result.name = read.name
 		result.plus = read.plus
 		result.seq = read.seq[tail_T.index + 1 : ]
 		result.qual = read.qual[tail_T.index + 1 : ]
 
 	#print '+', result.seq
+	#print(result.seq)
 	return result
 
 
@@ -301,7 +346,7 @@ def main():
 	MIN_TAIL_LENGTH = int(args.min_tail_length)
 	CRITICAL_PROCENTAGE = float(args.critical_procentage)
 	output_path_cut, output_path_uncut = pathmaker.make_output_path(output_path)
-	print(CRITICAL_PROCENTAGE)
+	#print(CRITICAL_PROCENTAGE)
 
 	input_path = pathmaker.make_input_path(input_path)
 	
